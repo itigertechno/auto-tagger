@@ -41,7 +41,6 @@ def get_current_tag(tags):
         try:
             current_tags = sorted(current_tags, key=lambda t: [int(t) for t in str(t).replace('v', '').split('.')], reverse=True)
         except ValueError:
-            comment_on_pr(f'latest tag ({current_tags}) does not conform to semver ([v]?MAJOR.MINOR.PATCH), failed to bump version')
             exit(1)
     return(str(current_tags[0]))
 
@@ -60,7 +59,6 @@ def semver_bump(current_tag, commit_message):
     try:
         curr_ver = semver.VersionInfo.parse(current_tag.replace('v', ''))
     except ValueError:
-        comment_on_pr(f'latest tag ({current_tag}) does not conform to semver ([v]?MAJOR.MINOR.PATCH), failed to bump version')
         exit(1)
 
     if '#major' in commit_message:
@@ -91,30 +89,6 @@ def create_and_push_tag(repo, merge_commit_sha, new_tag):
     gh_origin.push(new_tag)
 
 
-def comment_on_pr(comment_body):
-    """Comments on github PR with a given message.
-    Authentication is handled by environment variables passed in from github actions.
-
-    Args:
-        comment_body (str): message to be posted to pull request by github actions bot
-
-    Returns:
-        None
-    """
-    g = Github(os.getenv('GITHUB_TOKEN'))
-    repo = g.get_repo(os.getenv('GITHUB_REPOSITORY'))
-
-    if os.getenv('GITHUB_PR_NUMBER'):
-        pr_number = int(os.getenv('GITHUB_PR_NUMBER'))
-    else:
-        with open(os.getenv('GITHUB_EVENT_PATH')) as f:
-            event_info = json.loads(f.read())
-        pr_number = event_info['number']
-
-    pr = repo.get_pull(pr_number)
-    pr.create_issue_comment(body=comment_body)
-
-
 def main():
     """Main function orchestrating the tag bump and commenting on the PR.
     Reads its configuration from a json file and environment variables provided by github actions.
@@ -141,7 +115,6 @@ def main():
             print(comment_body)
             exit(0)
         create_and_push_tag(repo, os.getenv('GITHUB_SHA'), new_tag)
-        comment_on_pr(comment_body)
 
 
 if __name__ == '__main__':
